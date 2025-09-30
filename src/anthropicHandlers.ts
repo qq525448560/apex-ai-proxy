@@ -1,15 +1,3 @@
-import type {
-  AnthropicMessagesRequest,
-  AnthropicMessage,
-  ChatCompletionRequest,
-  AnthropicTool,
-  ToolDefinition,
-  AzureConfig,
-  ExtendedChatMessage,
-  ExtendedAnthropicContentBlock,
-  ExtendedAnthropicMessagesRequest,
-} from './types';
-
 import { urlBuilder, isSupportedUnifiedApiEndpoint } from './utils';
 
 /**
@@ -225,6 +213,42 @@ function convertAnthropicToOpenAI(anthropicRequest: ExtendedAnthropicMessagesReq
 }
 
 /**
+ * Convert Anthropic content blocks to OpenAI content blocks
+ */
+function convertContentBlocks(anthropicContent: ExtendedAnthropicContentBlock[]): OpenAIContentBlock[] {
+  const openAIContent: OpenAIContentBlock[] = [];
+
+  for (const content of anthropicContent) {
+    switch (content.type) {
+      case 'text':
+        if (content.text) {
+          openAIContent.push({
+            type: 'text',
+            text: content.text,
+          });
+        }
+        break;
+      case 'image':
+        if (content.source && content.source.type === 'base64') {
+          // Convert Anthropic base64 image to OpenAI image_url format
+          const imageUrl = `data:${content.source.media_type};base64,${content.source.data}`;
+          openAIContent.push({
+            type: 'image_url',
+            image_url: {
+              url: imageUrl,
+              detail: 'auto',
+            },
+          });
+        }
+        break;
+      // tool_use and tool_result are handled separately in convertMessages
+    }
+  }
+
+  return openAIContent;
+}
+
+/**
  * Convert Anthropic messages to OpenAI messages format
  */
 function convertMessages(anthropicMessages: AnthropicMessage[]): ExtendedChatMessage[] {
@@ -240,11 +264,14 @@ function convertMessages(anthropicMessages: AnthropicMessage[]): ExtendedChatMes
       continue;
     }
 
+    const contentBlocks = message.content as ExtendedAnthropicContentBlock[];
     const textContents: string[] = [];
     const toolCalls: any[] = [];
     const toolResults: Array<{ tool_call_id: string; content: string }> = [];
+    const hasMultimodalContent = contentBlocks.some(block => block.type === 'image');
 
-    for (const content of message.content as ExtendedAnthropicContentBlock[]) {
+    // Process content blocks
+    for (const content of contentBlocks) {
       switch (content.type) {
         case 'text':
           if (content.text) {
@@ -275,7 +302,23 @@ function convertMessages(anthropicMessages: AnthropicMessage[]): ExtendedChatMes
       }
     }
 
-    if (textContents.length > 0 || toolCalls.length > 0) {
+    // Handle multimodal content (text + images)
+    if (hasMultimodalContent) {
+      const openAIContent = convertContentBlocks(contentBlocks);
+      if (openAIContent.length > 0) {
+        const openAIMessage: ExtendedChatMessage = {
+          role: message.role === 'assistant' ? 'assistant' : 'user',
+          content: openAIContent,
+        };
+
+        if (toolCalls.length > 0) {
+          openAIMessage.tool_calls = toolCalls;
+        }
+
+        openAIMessages.push(openAIMessage);
+      }
+    } else if (textContents.length > 0 || toolCalls.length > 0) {
+      // Handle text-only content
       const openAIMessage: ExtendedChatMessage = {
         role: message.role === 'assistant' ? 'assistant' : 'user',
         content: textContents.length > 0 ? textContents.join('\n') : '',
@@ -740,8 +783,6 @@ export async function handleAnthropicMessagesRequest(
   // Convert request to provider format
   const providerRequest = await convertToProviderRequest(request, requestBody, api_key, endpoint, provider, model, azureConfig);
 
-  // Forward request to provider
-  logger.info(`[DEBUG] Making request to provider: ${provider}, model: ${model}`, { providerRequest });
 
   let providerResponse: Response;
   try {

@@ -2,7 +2,6 @@
  * Request handlers for the AI service aggregator
  */
 
-import type { ChatCompletionRequest, ErrorResponse, AzureConfig } from './types';
 import { formatErrorResponse, urlBuilder, isSupportedUnifiedApiEndpoint } from './utils';
 
 /**
@@ -19,6 +18,16 @@ export async function handleChatCompletionsRequest(
   let requestBody: ChatCompletionRequest;
   try {
     requestBody = (await request.json()) as ChatCompletionRequest;
+
+    // Validate and normalize messages content
+    if (requestBody.messages) {
+      requestBody.messages = requestBody.messages.map(message => {
+        if (!message.content) {
+          message.content = [];
+        }
+        return message;
+      });
+    }
   } catch (error) {
     logger.error('[handleChatCompletionsRequest]: Failed to parse request body', { error });
     return formatErrorResponse('Invalid request body', 'invalid_request_error', 400);

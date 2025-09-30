@@ -1,9 +1,21 @@
 /**
+ * OpenAI compatible content block
+ */
+export interface OpenAIContentBlock {
+  type: 'text' | 'image_url';
+  text?: string;
+  image_url?: {
+    url: string;
+    detail?: 'low' | 'high' | 'auto';
+  };
+}
+
+/**
  * OpenAI compatible chat message
  */
 export interface ChatMessage {
   role: string;
-  content: string | Array<any> | null;
+  content: string | OpenAIContentBlock[] | null;
   name?: string;
   tool_call_id?: string;
 }
