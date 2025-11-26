@@ -31,7 +31,7 @@ export function verifyApiKey(request: Request, apiKey?: string): boolean {
   return false;
 }
 
-const OPENAI_ENDPOINT = ['cerebras', 'deepseek', 'groq', 'openai', 'perplexity-ai'];
+const OPENAI_ENDPOINT = ['cerebras', 'deepseek', 'groq', 'openai', 'perplexity-ai', 'compat']; // compat => google-vertex-ai
 const OPENAI_V1_ENDPOINT = ['grok', 'mistral', 'openrouter'];
 const SUPPORTED_ENDPOINTS = ['azure-openai', 'anthropic', 'google-ai-studio', 'cohere', ...OPENAI_ENDPOINT, ...OPENAI_V1_ENDPOINT];
 const SUPPORTED_UNIFIED_API_ENDPOINTS = [
