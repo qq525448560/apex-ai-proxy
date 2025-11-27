@@ -68,13 +68,14 @@ export async function handleChatCompletionsRequest(
     const error = (await providerResponse.json()) as ErrorResponse;
     logger.error(`[handleChatCompletionsRequest]: [${provider} error] API request failed, message: ${error.error?.message ?? '-'}`, error);
     return formatErrorResponse(
-      `[${provider} error] API request failed, message: ${error.error?.message ?? '-'}, meta: ${{
+      `[${provider} error] API request failed, message: ${error.error?.message ?? '-'}, meta: ${JSON.stringify({
         url,
         model,
         provider,
-      }}`,
+      })}`,
       'internal_server_error',
       providerResponse.status,
+			{ provider_error: error },
     );
   }
   return new Response(providerResponse.body, { headers: providerResponse.headers });

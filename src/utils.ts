@@ -88,9 +88,10 @@ export function urlBuilder(endpoint: string, provider: string, azureConfig?: Azu
 /**
  * Format error response in OpenAI compatible format
  */
-export function formatErrorResponse(message: string, type: string = 'internal_error', status: number = 500): Response {
+export function formatErrorResponse(message: string, type: string = 'internal_error', status: number = 500, other?: Record<string, any>): Response {
   const errorResponse: ErrorResponse = {
     error: { message, type },
+		...other,
   };
 
   return corsWrapper(
