@@ -1,0 +1,45 @@
+/**
+ * Template for wrangler.jsonc.
+ *
+ * Copy to `wrangler.jsonc` (gitignored) and fill in the values:
+ *   cp wrangler.example.jsonc wrangler.jsonc
+ *
+ * Where to find the IDs:
+ *   - ACCOUNT_ID:  Cloudflare dashboard → right sidebar of any page
+ *   - GATEWAY_ID:  AI Gateway dashboard → your gateway's name
+ *   - store_id:    Secrets Store dashboard → your store's ID
+ *   - AEPIPE_BASE_URL: deployed aepipe Worker URL (no trailing slash)
+ *
+ * Required Secrets Store entries (matching the bindings below):
+ *   - GatewayToken — CF AI Gateway authentication token
+ *   - AepipeToken  — aepipe ADMIN_TOKEN for log reporting
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "apex-ai-proxy",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-01",
+  "preview_urls": false,
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "ACCOUNT_ID": "<your-cloudflare-account-id>",
+    "GATEWAY_ID": "<your-ai-gateway-id>",
+    "AZURE_RESOURCE": "",
+    "AZURE_API_VERSION": "2025-04-01-preview",
+    "AEPIPE_BASE_URL": "<https://your-aepipe-worker.example.com>"
+  },
+  "secrets_store_secrets": [
+    {
+      "binding": "GatewayToken",
+      "secret_name": "GatewayToken",
+      "store_id": "<your-secrets-store-id>"
+    },
+    {
+      "binding": "AepipeToken",
+      "secret_name": "AepipeToken",
+      "store_id": "<your-secrets-store-id>"
+    }
+  ]
+}
