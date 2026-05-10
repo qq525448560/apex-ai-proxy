@@ -50,6 +50,58 @@ export function isSupportedUnifiedApiEndpoint(provider: string): boolean {
   return SUPPORTED_UNIFIED_API_ENDPOINTS.includes(provider);
 }
 
+export const PROXY_HEADER_PREFIX = 'x-apex-ai-proxy-';
+export const PROXY_HEADER_PROVIDER = 'X-APEX-AI-PROXY-PROVIDER';
+export const PROXY_HEADER_TYPE = 'X-APEX-AI-PROXY-TYPE';
+export const PROXY_HEADER_MAPPING = 'X-APEX-AI-PROXY-MAPPING';
+
+/**
+ * Parse `from1#to1,from2#to2` into Map<from, to>.
+ */
+export function parseModelMapping(headerValue: string): Map<string, string> {
+  const mapping = new Map<string, string>();
+  for (const entry of headerValue.split(',')) {
+    const trimmed = entry.trim();
+    if (!trimmed) continue;
+    const idx = trimmed.indexOf('#');
+    if (idx < 0) continue;
+    const from = trimmed.slice(0, idx).trim();
+    const to = trimmed.slice(idx + 1).trim();
+    if (from && to) mapping.set(from, to);
+  }
+  return mapping;
+}
+
+/**
+ * Mutate body.model in place if a mapping entry matches. The model field may be
+ * `name` (passthrough mode) or `name#provider` (CF gateway mode); only the bare
+ * name is matched against the mapping, with any `#provider` suffix preserved.
+ */
+export function applyModelMapping(body: any, mapping: Map<string, string>): void {
+  if (!body || typeof body !== 'object' || typeof body.model !== 'string' || mapping.size === 0) return;
+  const modelName: string = body.model;
+  const sepIdx = modelName.indexOf('#');
+  const base = sepIdx >= 0 ? modelName.slice(0, sepIdx) : modelName;
+  const suffix = sepIdx >= 0 ? modelName.slice(sepIdx) : '';
+  const mapped = mapping.get(base);
+  if (mapped) {
+    body.model = mapped + suffix;
+  }
+}
+
+/**
+ * Return a fresh Headers without any X-APEX-AI-PROXY-* entries.
+ */
+export function stripProxyHeaders(headers: Headers): Headers {
+  const out = new Headers();
+  headers.forEach((value, key) => {
+    if (!key.toLowerCase().startsWith(PROXY_HEADER_PREFIX)) {
+      out.set(key, value);
+    }
+  });
+  return out;
+}
+
 export function urlBuilder(endpoint: string, provider: string, azureConfig?: AzureConfig) {
   const urlFragment = [endpoint];
   if (!SUPPORTED_ENDPOINTS.includes(provider)) {
@@ -111,10 +163,16 @@ export function corsWrapper(response: Response): Response {
     'Access-Control-Allow-Headers': 'Authorization, Content-Type',
     'Access-Control-Max-Age': '86400',
   };
-  Object.keys(corsHeaders).forEach((key) => {
-    response.headers.set(key, corsHeaders[key]);
+  // Build a fresh Headers because responses from `fetch()` have immutable headers.
+  const newHeaders = new Headers(response.headers);
+  for (const [key, value] of Object.entries(corsHeaders)) {
+    newHeaders.set(key, value);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: newHeaders,
   });
-  return response;
 }
 
 /**

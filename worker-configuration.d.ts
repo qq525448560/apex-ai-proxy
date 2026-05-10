@@ -3,7 +3,9 @@
 interface Env {
   ACCOUNT_ID: string;
   GATEWAY_ID: string;
+  AEPIPE_BASE_URL: string;
   GatewayToken: any;
+  AepipeToken: any;
 
   AZURE_RESOURCE?: string;
   AZURE_API_VERSION?: string;

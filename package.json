@@ -15,5 +15,8 @@
 		"typescript": "^5.5.2",
 		"vitest": "~2.1.9",
 		"wrangler": "^4.34.0"
+	},
+	"dependencies": {
+		"aepipe-sdk": "^0.1.1"
 	}
 }
